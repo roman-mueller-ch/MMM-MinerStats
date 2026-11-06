@@ -1,0 +1,29 @@
+.minerstats {
+	text-align: left;
+}
+
+.minerstats-heading {
+	margin-bottom: 0.5em;
+}
+
+.minerstats-miners {
+	margin-bottom: 1em;
+}
+
+.minerstats-miners td {
+	padding-right: 1em;
+	white-space: nowrap;
+}
+
+.minerstats-miners td:last-child {
+	padding-right: 0;
+}
+
+.minerstats-energy {
+	margin-top: 0.5em;
+}
+
+.minerstats-offline,
+.minerstats-problem {
+	color: red;
+}

@@ -1,0 +1,13 @@
+{
+	"name": "mmm-minerstats",
+	"version": "2.0.0",
+	"description": "Hash rate and power of your Bitaxe and Avalon Nano miners for MagicMirror²",
+	"license": "MIT",
+	"private": true,
+	"scripts": {
+		"test": "node --test"
+	},
+	"engines": {
+		"node": ">=18"
+	}
+}

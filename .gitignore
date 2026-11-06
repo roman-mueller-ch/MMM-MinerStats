@@ -1,0 +1,4 @@
+node_modules/
+.DS_Store
+# Holds addresses and login cookies. It belongs in ~/.config/MMM-MinerStats/, never in this repo.
+miners.json

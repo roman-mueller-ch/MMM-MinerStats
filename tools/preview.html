@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- Renders the module with made-up readings, without MagicMirror. Used by screenshot.sh. -->
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>MMM-MinerStats preview</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+	<link rel="stylesheet" href="../MMM-MinerStats.css">
+	<style>
+		body { background: #000; color: #aaa; font: 300 20px/1.5 "Roboto Condensed", "Liberation Sans Narrow", sans-serif; margin: 24px; }
+		strong { color: #fff; font-weight: 400; }
+	</style>
+</head>
+<body>
+	<script>
+		const Module = {
+			register (name, definition) {
+				const module = {
+					...definition,
+					config: definition.defaults,
+					translate: (key) => key,
+					stats: {
+						ok: true,
+						miners: [
+							{ name: "Bitaxe #1", online: true, hash: 1.21, power: 18.4, temp: 58 },
+							{ name: "Bitaxe #2", online: false, problem: "timeout" },
+							{ name: "Nano 3S", online: true, hash: 5.84, power: 128, temp: null }
+						],
+						totalHash: 7.05,
+						totalPower: 146.4,
+						kwhPerDay: 3.51
+					}
+				};
+				document.body.append(module.getDom());
+			}
+		};
+	</script>
+	<script src="../MMM-MinerStats.js"></script>
+</body>
+</html>
