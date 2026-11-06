@@ -6,6 +6,42 @@
 	margin-bottom: 0.5em;
 }
 
+.minerstats-heading strong {
+	color: #d6ccb4;
+}
+
+.minerstats .fa-bitcoin {
+	color: #f7931a;
+}
+
+.minerstats .fa-hammer {
+	color: #aebfd0;
+}
+
+.minerstats .fa-wind {
+	color: #7fd6c2;
+}
+
+.minerstats .fa-bolt {
+	color: #ffcc33;
+}
+
+.minerstats .fa-temperature-half {
+	color: #ff8e99;
+}
+
+.minerstats .fa-fire {
+	color: #ff8a4c;
+}
+
+.minerstats .fa-plug {
+	color: #4aa8ff;
+}
+
+.minerstats .fa-trophy {
+	color: #ffcc33;
+}
+
 .minerstats-miners {
 	border-collapse: collapse;
 	margin: 0 0 1em auto;
