@@ -5,16 +5,31 @@ const net = require("node:net");
 const os = require("node:os");
 const path = require("node:path");
 const { after, before, describe, it } = require("node:test");
-const { loadMiners, parseAvalonNano, parseBitaxe, pollMiners, summarize } = require("../lib/miners");
+const { loadMiners, parseAvalonNano, parseAvalonSummary, parseBitaxe, pollMiners, summarize } = require("../lib/miners");
 
 const SECRET = "not-a-real-secret";
 const NANO_REPLY = `{"STATS":[{"STATS":0,"ID":"AVA100","MM ID0":"Ver[${SECRET}] GHSspd[6300.00] GHSavg[6350.00] TAvg[80] MTavg[85] PS[0 0 27000 4 0 3600 131]"}]}`;
+const NANO_SUMMARY = '{"SUMMARY":[{"Best Share":2000000000,"Found Blocks":1}]}';
 
 const listen = (server) => new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(server.address().port)));
 
 describe("parsers", () => {
 	it("converts a Bitaxe hash rate from GH/s to TH/s", () => {
-		assert.deepEqual(parseBitaxe('{"hashRate":1500,"power":25.5,"temp":65}'), { hash: 1.5, power: 25.5, temp: 65 });
+		assert.deepEqual(
+			parseBitaxe('{"hashRate":1500,"power":25.5,"temp":65,"bestDiff":5000000,"blockFound":2}'),
+			{ hash: 1.5, power: 25.5, temp: 65, bestDiff: 5000000, blocks: 2 }
+		);
+	});
+
+	it("reads a best difficulty written as text by older AxeOS", () => {
+		assert.equal(parseBitaxe('{"bestDiff":"4.5G"}').bestDiff, 4500000000);
+		assert.equal(parseBitaxe('{"bestDiff":"750"}').bestDiff, 750);
+		assert.equal(parseBitaxe("{}").bestDiff, 0);
+	});
+
+	it("reads the Nano's best share and blocks found", () => {
+		assert.deepEqual(parseAvalonSummary(NANO_SUMMARY), { bestDiff: 2000000000, blocks: 1 });
+		assert.deepEqual(parseAvalonSummary('{"STATUS":[]}'), { bestDiff: 0, blocks: 0 });
 	});
 
 	it("reads the Nano's estats text", () => {
@@ -42,12 +57,12 @@ describe("pollMiners", () => {
 	let host;
 	let nanoPort;
 	let hangingNanoPort;
-	let commandSeen;
+	const commandsSeen = [];
 
 	before(async () => {
 		server = http.createServer((request, response) => {
 			if (request.url === "/api/system/info") {
-				response.end(`{"hashRate":1000,"power":20,"temp":60,"stratumUser":"${SECRET}","ssid":"${SECRET}"}`);
+				response.end(`{"hashRate":1000,"power":20,"temp":60,"bestDiff":5000000,"blockFound":0,"stratumUser":"${SECRET}","ssid":"${SECRET}"}`);
 			}
 			// Any other path never answers, which is how the timeout is tested.
 		});
@@ -57,8 +72,9 @@ describe("pollMiners", () => {
 		nanoServer = net.createServer((socket) => {
 			socket.on("error", () => {});
 			socket.once("data", (data) => {
-				commandSeen = data.toString();
-				socket.write(`${NANO_REPLY}\0`);
+				const { command } = JSON.parse(data.toString());
+				commandsSeen.push(command);
+				socket.write(`${command === "summary" ? NANO_SUMMARY : NANO_REPLY}\0`);
 			});
 		});
 		nanoPort = await listen(nanoServer);
@@ -74,15 +90,15 @@ describe("pollMiners", () => {
 		hangingNanoServer.close();
 	});
 
-	it("asks the Nano with a read command and passes on only the readings", async () => {
+	it("asks the Nano with read commands and passes on only the readings", async () => {
 		const results = await pollMiners([
 			{ name: "A", type: "bitaxe", host },
 			{ name: "B", type: "avalon-nano", host: "127.0.0.1", port: nanoPort }
 		]);
-		assert.deepEqual(JSON.parse(commandSeen), { command: "estats" });
+		assert.deepEqual(commandsSeen, ["estats", "summary"]);
 		assert.deepEqual(results, [
-			{ name: "A", online: true, hash: 1, power: 20, temp: 60 },
-			{ name: "B", online: true, hash: 6.3, power: 131, temp: 80 }
+			{ name: "A", online: true, hash: 1, power: 20, temp: 60, bestDiff: 5000000, blocks: 0 },
+			{ name: "B", online: true, hash: 6.3, power: 131, temp: 80, bestDiff: 2000000000, blocks: 1 }
 		]);
 		assert.ok(!JSON.stringify(results).includes(SECRET));
 	});
@@ -117,10 +133,12 @@ describe("pollMiners", () => {
 describe("summarize", () => {
 	it("adds up only the miners that are online", () => {
 		const summary = summarize([
-			{ name: "A", online: true, hash: 1.5, power: 25, temp: 60 },
+			{ name: "A", online: true, hash: 1.5, power: 25, temp: 60, bestDiff: 900, blocks: 1 },
 			{ name: "B", online: false, problem: "timeout" },
-			{ name: "C", online: true, hash: 6.5, power: 75, temp: null }
+			{ name: "C", online: true, hash: 6.5, power: 75, temp: null, bestDiff: 100, blocks: 2 }
 		]);
+		assert.equal(summary.bestDiff, 900);
+		assert.equal(summary.blocks, 3);
 		assert.equal(summary.totalHash, 8);
 		assert.equal(summary.totalPower, 100);
 		assert.equal(summary.kwhPerDay, 2.4);

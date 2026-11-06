@@ -3,7 +3,8 @@ Module.register("MMM-MinerStats", {
 		updateInterval: 30 * 1000,
 		title: "MINERS",
 		showTemperature: false,
-		showEnergy: true
+		showEnergy: true,
+		showSolo: true
 	},
 
 	getStyles () {
@@ -58,7 +59,20 @@ Module.register("MMM-MinerStats", {
 			wrapper.append(energy);
 		}
 
+		if (this.config.showSolo) {
+			const heading = this.heading("fa-solid fa-trophy", "SOLO");
+			heading.classList.add("minerstats-solo");
+			wrapper.append(heading);
+			wrapper.append(this.element("div", "", `Best diff ${this.formatDifficulty(this.stats.bestDiff)} · Blocks found ${this.stats.blocks}`));
+		}
+
 		return wrapper;
+	},
+
+	formatDifficulty (value) {
+		const units = [[1e15, "P"], [1e12, "T"], [1e9, "G"], [1e6, "M"], [1e3, "k"]];
+		const unit = units.find(([size]) => value >= size);
+		return unit ? `${(value / unit[0]).toFixed(2)} ${unit[1]}` : String(value);
 	},
 
 	minerRow (miner) {

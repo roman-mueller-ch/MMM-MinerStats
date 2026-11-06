@@ -25,6 +25,10 @@
 	margin-top: 0.5em;
 }
 
+.minerstats-solo {
+	margin-top: 1em;
+}
+
 .minerstats-offline,
 .minerstats-problem {
 	color: red;

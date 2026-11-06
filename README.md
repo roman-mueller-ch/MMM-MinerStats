@@ -1,6 +1,6 @@
 # MMM-MinerStats
 
-Shows the hash rate and power of your home miners on [MagicMirror²](https://magicmirror.builders/), with totals and the energy they use per day. A miner that stops answering turns red.
+Shows the hash rate and power of your home miners on [MagicMirror²](https://magicmirror.builders/), with totals, the energy they use per day, and your best difficulty and blocks found. A miner that stops answering turns red.
 
 ![The module with made-up readings and one miner offline](docs/demo.png)
 
@@ -69,8 +69,11 @@ Add it to `config/config.js`:
 | `title` | `"MINERS"` | The heading above the list. |
 | `showTemperature` | `false` | Adds a temperature column. |
 | `showEnergy` | `true` | Shows the energy line. |
+| `showSolo` | `true` | Shows the best difficulty and blocks found. |
 
 The energy line assumes today's power draw continues for 24 hours, so it is an estimate.
+
+The `SOLO` section shows the highest best difficulty and the total blocks found across the miners that are online, as the miners report them. These numbers can drop when a miner is offline. An Avalon Nano's numbers can also start again from zero when it restarts.
 
 ## Privacy
 

@@ -9,7 +9,7 @@ profile="$(mktemp -d)"
 trap 'rm -rf "$profile"' EXIT
 
 "$chrome" --headless=new --disable-gpu --hide-scrollbars --allow-file-access-from-files \
-	--force-device-scale-factor=2 --user-data-dir="$profile" --window-size=460,300 \
+	--force-device-scale-factor=2 --user-data-dir="$profile" --window-size=460,400 \
 	--virtual-time-budget=4000 --screenshot="$out" "file://$root/tools/preview.html" >/dev/null 2>&1
 
 echo "$out"
