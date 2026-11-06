@@ -72,7 +72,7 @@ Module.register("MMM-MinerStats", {
 		if (!miner.online) {
 			row.className = "minerstats-offline";
 			cell("fa-solid fa-triangle-exclamation", miner.name);
-			const status = this.element("td", "", miner.problem === "cookie rejected" ? "COOKIE REJECTED" : "OFFLINE");
+			const status = this.element("td", "", "OFFLINE");
 			status.colSpan = this.config.showTemperature ? 3 : 2;
 			row.append(status);
 			return row;

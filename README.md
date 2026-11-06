@@ -34,7 +34,7 @@ Then edit it. The module rereads it on every update, so changes need no restart.
 {
 	"miners": [
 		{ "name": "Bitaxe", "type": "bitaxe", "host": "192.168.1.50" },
-		{ "name": "Nano 3S", "type": "avalon-nano", "host": "192.168.1.51", "cookie": "auth=YOUR_COOKIE_VALUE" }
+		{ "name": "Nano 3S", "type": "avalon-nano", "host": "192.168.1.51" }
 	]
 }
 ```
@@ -44,9 +44,8 @@ Then edit it. The module rereads it on every update, so changes need no restart.
 | `name` | The label on the mirror. |
 | `type` | `bitaxe` or `avalon-nano`. |
 | `host` | The miner's IP address or hostname. |
-| `cookie` | Avalon Nano only: its login cookie. |
 
-**Finding the Nano's cookie:** log in to the Nano's web page, open your browser's developer tools and find the `auth` cookie under the site's storage. Write it as `auth=` followed by its value. If the mirror shows `COOKIE REJECTED`, log in again and copy the new value.
+No passwords are needed. The module reads a Bitaxe over HTTP and an Avalon Nano through its CGMiner API on TCP port 4028, so the mirror must be able to reach those.
 
 ### 2. Add the module
 
@@ -68,18 +67,18 @@ Add it to `config/config.js`:
 | --- | --- | --- |
 | `updateInterval` | `30000` | Milliseconds between updates, at least 5000. |
 | `title` | `"MINERS"` | The heading above the list. |
-| `showTemperature` | `false` | Adds a temperature column. Bitaxe only, the Nano shows a dash. |
+| `showTemperature` | `false` | Adds a temperature column. |
 | `showEnergy` | `true` | Shows the energy line. |
 
 The energy line assumes today's power draw continues for 24 hours, so it is an estimate.
 
 ## Privacy
 
-**Keep your miner details out of `config/config.js` and the module's folder.** MagicMirror serves both `/config` and `/modules` over HTTP, so anyone who can reach your mirror could download files from them. That is why this module reads `~/.config/MMM-MinerStats/miners.json`.
+MagicMirror serves both `/config` and `/modules` over HTTP, so anyone who can reach your mirror could download files from them. That is why your miners' addresses go in `~/.config/MMM-MinerStats/miners.json` instead.
 
-Only the module's Node helper reads that file. The browser gets each miner's name and readings, and never its address, cookie, wallet or pool details.
+Only the module's Node helper reads that file. The browser gets each miner's name and readings, and never its address, wallet or pool details.
 
-Requests to miners use plain HTTP because that is all they offer, so the cookie is readable to others on your network while it travels. Keep your miners on a network you trust.
+The module only sends read requests, but your miners' APIs have no login, so anyone on your network can reach them too. Keep your miners on a network you trust.
 
 ## Tests
 

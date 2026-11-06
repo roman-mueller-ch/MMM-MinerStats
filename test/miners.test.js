@@ -1,26 +1,33 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const http = require("node:http");
+const net = require("node:net");
 const os = require("node:os");
 const path = require("node:path");
 const { after, before, describe, it } = require("node:test");
 const { loadMiners, parseAvalonNano, parseBitaxe, pollMiners, summarize } = require("../lib/miners");
 
 const SECRET = "not-a-real-secret";
-const NANO_BODY = `dashboardCallback({"hwtype":"Avalon Nano3s", "realtime_hash":"6.30", "power":"131",
-	"passwd1":"${SECRET}", "worker1":"${SECRET}", "list":[1,2,],});`;
+const NANO_REPLY = `{"STATS":[{"STATS":0,"ID":"AVA100","MM ID0":"Ver[${SECRET}] GHSspd[6300.00] GHSavg[6350.00] TAvg[80] MTavg[85] PS[0 0 27000 4 0 3600 131]"}]}`;
+
+const listen = (server) => new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(server.address().port)));
 
 describe("parsers", () => {
 	it("converts a Bitaxe hash rate from GH/s to TH/s", () => {
 		assert.deepEqual(parseBitaxe('{"hashRate":1500,"power":25.5,"temp":65}'), { hash: 1.5, power: 25.5, temp: 65 });
 	});
 
-	it("reads the Nano's JSONP with trailing commas", () => {
-		assert.deepEqual(parseAvalonNano(NANO_BODY), { hash: 6.3, power: 131, temp: null });
+	it("reads the Nano's estats text", () => {
+		assert.deepEqual(parseAvalonNano(NANO_REPLY), { hash: 6.3, power: 131, temp: 80 });
 	});
 
-	it("reports a login page as a rejected cookie", () => {
-		assert.throws(() => parseAvalonNano("<html>login</html>"), /cookie rejected/);
+	it("keeps the hash rate when the Nano leaves out power and temperature", () => {
+		assert.deepEqual(parseAvalonNano("GHSspd[6300.00]"), { hash: 6.3, power: 0, temp: null });
+	});
+
+	it("rejects a Nano reply without a hash rate", () => {
+		assert.throws(() => parseAvalonNano('{"STATUS":[]}'), /unreadable response/);
+		assert.throws(() => parseAvalonNano(""), /unreadable response/);
 	});
 
 	it("does not quote the response when it cannot be parsed", () => {
@@ -30,39 +37,59 @@ describe("parsers", () => {
 
 describe("pollMiners", () => {
 	let server;
+	let nanoServer;
+	let hangingNanoServer;
 	let host;
-	let cookieSeen;
+	let nanoPort;
+	let hangingNanoPort;
+	let commandSeen;
 
 	before(async () => {
 		server = http.createServer((request, response) => {
-			if (request.url.startsWith("/get_dashboard.cgi")) {
-				cookieSeen = request.headers.cookie;
-				response.end(NANO_BODY);
-			} else if (request.url === "/api/system/info") {
+			if (request.url === "/api/system/info") {
 				response.end(`{"hashRate":1000,"power":20,"temp":60,"stratumUser":"${SECRET}","ssid":"${SECRET}"}`);
 			}
 			// Any other path never answers, which is how the timeout is tested.
 		});
-		await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-		host = `127.0.0.1:${server.address().port}`;
+		host = `127.0.0.1:${await listen(server)}`;
+
+		// Keeps the connection open after replying, so the null byte has to end the read.
+		nanoServer = net.createServer((socket) => {
+			socket.on("error", () => {});
+			socket.once("data", (data) => {
+				commandSeen = data.toString();
+				socket.write(`${NANO_REPLY}\0`);
+			});
+		});
+		nanoPort = await listen(nanoServer);
+
+		hangingNanoServer = net.createServer((socket) => socket.on("error", () => {}));
+		hangingNanoPort = await listen(hangingNanoServer);
 	});
 
 	after(() => {
 		server.closeAllConnections();
 		server.close();
+		nanoServer.close();
+		hangingNanoServer.close();
 	});
 
-	it("sends the cookie and passes on only the readings", async () => {
+	it("asks the Nano with a read command and passes on only the readings", async () => {
 		const results = await pollMiners([
 			{ name: "A", type: "bitaxe", host },
-			{ name: "B", type: "avalon-nano", host, cookie: "auth=abc" }
+			{ name: "B", type: "avalon-nano", host: "127.0.0.1", port: nanoPort }
 		]);
-		assert.equal(cookieSeen, "auth=abc");
+		assert.deepEqual(JSON.parse(commandSeen), { command: "estats" });
 		assert.deepEqual(results, [
 			{ name: "A", online: true, hash: 1, power: 20, temp: 60 },
-			{ name: "B", online: true, hash: 6.3, power: 131, temp: null }
+			{ name: "B", online: true, hash: 6.3, power: 131, temp: 80 }
 		]);
 		assert.ok(!JSON.stringify(results).includes(SECRET));
+	});
+
+	it("gives up on a Nano that never replies", async () => {
+		const [result] = await pollMiners([{ name: "Hanging", type: "avalon-nano", host: "127.0.0.1", port: hangingNanoPort }], 100);
+		assert.deepEqual(result, { name: "Hanging", online: false, problem: "timeout" });
 	});
 
 	it("gives up on a miner that hangs, while the others still answer", async () => {
@@ -76,13 +103,14 @@ describe("pollMiners", () => {
 
 	it("marks an unreachable miner offline", async () => {
 		const closed = http.createServer();
-		await new Promise((resolve) => closed.listen(0, "127.0.0.1", resolve));
-		const { port } = closed.address();
+		const port = await listen(closed);
 		await new Promise((resolve) => closed.close(resolve));
 
-		const [result] = await pollMiners([{ name: "Gone", type: "bitaxe", host: `127.0.0.1:${port}` }]);
-		assert.equal(result.online, false);
-		assert.equal(result.problem, "ECONNREFUSED");
+		const results = await pollMiners([
+			{ name: "Gone", type: "bitaxe", host: `127.0.0.1:${port}` },
+			{ name: "Gone too", type: "avalon-nano", host: "127.0.0.1", port }
+		]);
+		assert.deepEqual(results.map((miner) => miner.problem), ["ECONNREFUSED", "ECONNREFUSED"]);
 	});
 });
 
@@ -124,7 +152,7 @@ describe("loadMiners", () => {
 	});
 
 	it("does not quote the file when it is not valid JSON", async () => {
-		const file = await write(`{"miners":[{"cookie":"${SECRET}"`);
+		const file = await write(`{"miners":[{"host":"${SECRET}"`);
 		await assert.rejects(loadMiners(file), (error) => /not valid JSON/.test(error.message) && !error.message.includes(SECRET));
 	});
 

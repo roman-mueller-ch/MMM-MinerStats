@@ -1,6 +1,6 @@
 {
 	"miners": [
 		{ "name": "Bitaxe", "type": "bitaxe", "host": "192.168.1.50" },
-		{ "name": "Nano 3S", "type": "avalon-nano", "host": "192.168.1.51", "cookie": "auth=YOUR_COOKIE_VALUE" }
+		{ "name": "Nano 3S", "type": "avalon-nano", "host": "192.168.1.51" }
 	]
 }
