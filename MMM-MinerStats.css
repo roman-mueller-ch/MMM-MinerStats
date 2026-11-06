@@ -1,5 +1,5 @@
 .minerstats {
-	text-align: left;
+	text-align: right;
 }
 
 .minerstats-heading {
@@ -7,11 +7,13 @@
 }
 
 .minerstats-miners {
-	margin-bottom: 1em;
+	border-collapse: collapse;
+	margin: 0 0 1em auto;
 }
 
 .minerstats-miners td {
 	padding-right: 1em;
+	text-align: right;
 	white-space: nowrap;
 }
 
