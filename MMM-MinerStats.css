@@ -44,7 +44,11 @@
 
 .minerstats-miners {
 	border-collapse: collapse;
-	margin: 0 0 1em auto;
+	margin-left: auto;
+}
+
+.minerstats-total-heading td {
+	padding-top: 1em;
 }
 
 .minerstats-miners td {

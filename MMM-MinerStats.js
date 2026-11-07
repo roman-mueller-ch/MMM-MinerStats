@@ -48,10 +48,8 @@ Module.register("MMM-MinerStats", {
 
 		const table = this.element("table", "minerstats-miners");
 		for (const miner of this.stats.miners) table.append(this.minerRow(miner));
+		table.append(this.totalHeadingRow(), this.totalRow());
 		wrapper.append(table);
-
-		wrapper.append(this.heading("fa-solid fa-fire", "TOTAL"));
-		wrapper.append(this.element("div", "", `${this.stats.totalHash.toFixed(2)} TH/s · ${this.stats.totalPower.toFixed(1)} W`));
 
 		if (this.config.showEnergy) {
 			const energy = this.element("div", "minerstats-energy");
@@ -77,28 +75,51 @@ Module.register("MMM-MinerStats", {
 
 	minerRow (miner) {
 		const row = document.createElement("tr");
-		const cell = (icon, text) => {
-			const td = document.createElement("td");
-			td.append(this.icon(icon), ` ${text}`);
-			row.append(td);
-		};
 
 		if (!miner.online) {
 			row.className = "minerstats-offline";
-			cell("fa-solid fa-triangle-exclamation", miner.name);
+			row.append(this.iconCell("fa-solid fa-triangle-exclamation", miner.name));
 			const status = this.element("td", "", "OFFLINE");
 			status.colSpan = this.config.showTemperature ? 3 : 2;
 			row.append(status);
 			return row;
 		}
 
-		cell("fa-solid fa-hammer", miner.name);
-		cell("fa-solid fa-wind", `${miner.hash.toFixed(2)} TH/s`);
-		cell("fa-solid fa-bolt", `${miner.power.toFixed(1)} W`);
+		row.append(
+			this.iconCell("fa-solid fa-hammer", miner.name),
+			this.iconCell("fa-solid fa-wind", `${miner.hash.toFixed(2)} TH/s`),
+			this.iconCell("fa-solid fa-bolt", `${miner.power.toFixed(1)} W`)
+		);
 		if (this.config.showTemperature) {
-			cell("fa-solid fa-temperature-half", miner.temp === null ? "–" : `${miner.temp.toFixed(0)} °C`);
+			row.append(this.iconCell("fa-solid fa-temperature-half", miner.temp === null ? "–" : `${miner.temp.toFixed(0)} °C`));
 		}
 		return row;
+	},
+
+	totalHeadingRow () {
+		const row = this.element("tr", "minerstats-total-heading");
+		const cell = document.createElement("td");
+		cell.colSpan = this.config.showTemperature ? 4 : 3;
+		cell.append(this.heading("fa-solid fa-fire", "TOTAL"));
+		row.append(cell);
+		return row;
+	},
+
+	totalRow () {
+		const row = document.createElement("tr");
+		row.append(
+			document.createElement("td"),
+			this.iconCell("fa-solid fa-wind", `${this.stats.totalHash.toFixed(2)} TH/s`),
+			this.iconCell("fa-solid fa-bolt", `${this.stats.totalPower.toFixed(1)} W`)
+		);
+		if (this.config.showTemperature) row.append(document.createElement("td"));
+		return row;
+	},
+
+	iconCell (icon, text) {
+		const cell = document.createElement("td");
+		cell.append(this.icon(icon), ` ${text}`);
+		return cell;
 	},
 
 	heading (icon, text) {
